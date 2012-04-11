@@ -1,0 +1,34 @@
+
+GLMap (https://github.com/olofsj/GLMap/) by olofsj 
+- porting of jni part to java and bugs by me
+- note: this is just a rough prototype, nothing for users. maybe it is useful as a 
+  starting point for how to draw maps with GLES20 on Android. 
+
+'project' folder should be importable 'as existing project' into eclipse
+
+you might need to run 'android update project --path . --target android-xx --subprojects' 
+in project folder when using android version 'xx'
+
+- installation:
+cd project
+ant debug
+adb install bin/GLMapActivity-debug.apk
+
+- some tiles to start with:
+cd tiles
+tar xjf ../map.tar.bz2
+cd ..
+adb shell mkdir /sdcard/GLMap
+adb push tiles /sdcard/GLMap/
+
+compile 'mapgenerator' for creating your own tiles. Bremen is hardcoded origin in  
+mapgenerator.c
+double center_x = 1991418.0;
+double center_y = 8267328.0;
+
+and GLMapRenderer.java
+private float xPos = 980073.56f;
+private float yPos = 6996566.0f;
+
+It probably works to set the center lat/lon of your map in mapgenerator.c and same in 
+MapRenderer. I cant recall how I came up with these values
