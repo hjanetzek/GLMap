@@ -11,7 +11,6 @@ import javax.microedition.khronos.opengles.GL10;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.AsyncTask;
-import android.os.CountDownTimer;
 import android.util.Log;
 
 public class GLMapRenderer implements GLSurfaceView.Renderer {
@@ -62,8 +61,6 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 	private float yPos = START_Y;
 	private float zPos = (float) (1.0 / Math.pow(2, START_Z));
 	private int width, height;
-	private double xScrollStart = 0.0;
-	private double yScrollStart = 0.0;
 
 	private long lastDraw = 0;
 	private boolean gles_shader = true;
@@ -203,45 +200,6 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		this.yPos = this.yPos - y / ((this.zPos / 2) * this.height);
 
 		mapMove(this.xPos, this.yPos, this.zPos, false);
-	}
-
-	public boolean scroll() {
-		if (this.mapview.scroller.isFinished())
-			return false;
-
-		this.mapview.scroller.computeScrollOffset();
-		float x = (float) this.xScrollStart +
-		      this.mapview.scroller.getCurrX() / (this.zPos * this.width);
-		float y = (float) this.yScrollStart +
-		      this.mapview.scroller.getCurrY() / (this.zPos * this.height);
-		if (Math.abs(x) >= 1 || Math.abs(y) >= 1) {
-			this.xPos = x;
-			this.yPos = y;
-			mapMove(this.xPos, this.yPos, this.zPos, false);
-		}
-
-		return true;
-	}
-
-	public void fling(float velocityX, float velocityY) {
-		this.xScrollStart = this.xPos;
-		this.yScrollStart = this.yPos;
-		this.mapview.scroller.fling(0, 0, Math.round(velocityX), Math.round(velocityY),
-		                            -10 * this.width, 10 * this.width, -10 * this.height,
-		                            10 * this.height);
-
-		new CountDownTimer(2000, 20) {
-			@Override
-			public void onTick(long tick) {
-				if (!scroll())
-					this.cancel();
-			}
-
-			@Override
-			public void onFinish() {
-
-			}
-		}.start();
 	}
 
 	public void zoom(float z) {

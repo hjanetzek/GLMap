@@ -18,11 +18,12 @@ package com.android.glmap;
 
 import android.content.Context;
 import android.opengl.GLSurfaceView;
+import android.os.CountDownTimer;
 import android.util.FloatMath;
 import android.view.GestureDetector;
 import android.view.GestureDetector.SimpleOnGestureListener;
 import android.view.MotionEvent;
-import android.view.animation.AccelerateInterpolator;
+import android.view.animation.DecelerateInterpolator;
 import android.widget.Scroller;
 
 public class GLMapView extends GLSurfaceView {
@@ -33,7 +34,6 @@ public class GLMapView extends GLSurfaceView {
 	private boolean multitouch = false;
 	private GLMapRenderer mRenderer;
 	private GestureDetector gestureDetector;
-	public Scroller scroller;
 	public float zoomFactor;
 
 	public GLMapView(Context context) {
@@ -51,7 +51,6 @@ public class GLMapView extends GLSurfaceView {
 
 		// Gesture detection
 		this.gestureDetector = new GestureDetector(new MapGestureDetector(this));
-		this.scroller = new Scroller(this.getContext(), new AccelerateInterpolator());
 	}
 
 	@Override
@@ -88,28 +87,73 @@ public class GLMapView extends GLSurfaceView {
 	}
 
 	private class MapGestureDetector extends SimpleOnGestureListener {
-		private GLMapView mapview;
+		private GLMapView mapView;
+		private float xScroll;
+		private float yScroll;
+		public Scroller scroller;
 
-		public MapGestureDetector(GLMapView mapview) {
-			this.mapview = mapview;
+		public MapGestureDetector(GLMapView mapView) {
+			this.mapView = mapView;
+			this.scroller = new Scroller(mapView.getContext(), new DecelerateInterpolator());
 		}
 
 		@Override
 		public boolean onDown(MotionEvent e) {
-			this.mapview.scroller.forceFinished(true);
+			this.scroller.forceFinished(true);
 			return true;
 		}
 
 		@Override
 		public boolean onScroll(MotionEvent e1, MotionEvent e2, float distanceX, float distanceY) {
-			this.mapview.mRenderer.move(-distanceX, distanceY);
+			this.mapView.mRenderer.move(-distanceX, distanceY);
+			return true;
+		}
+
+		public boolean scroll() {
+			if (this.scroller.isFinished())
+				return false;
+
+			this.scroller.computeScrollOffset();
+			float curX = this.scroller.getCurrX();
+			float curY = this.scroller.getCurrY();
+			float x = curX - this.xScroll;
+			float y = curY - this.yScroll;
+
+			if (Math.abs(x) >= 1 || Math.abs(y) >= 1) {
+				this.mapView.mRenderer.move(x, -y);
+
+				this.xScroll = curX;
+				this.yScroll = curY;
+			}
+
 			return true;
 		}
 
 		@Override
 		public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
 
-			this.mapview.mRenderer.fling(-velocityX, velocityY);
+			int w = this.mapView.getWidth();
+			int h = this.mapView.getHeight();
+
+			this.xScroll = 0;
+			this.yScroll = 0;
+
+			this.scroller.fling(0, 0, Math.round(velocityX) / 2, Math.round(velocityY) / 2,
+			                    -10 * w, 10 * w, -10 * h, 10 * h);
+
+			new CountDownTimer(2000, 20) {
+				@Override
+				public void onTick(long tick) {
+					if (!scroll())
+						this.cancel();
+				}
+
+				@Override
+				public void onFinish() {
+
+				}
+			}.start();
+
 			return true;
 		}
 	}
