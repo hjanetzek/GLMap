@@ -33,7 +33,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 	private final int LINE_VERTICES_DATA_COLOR2_OFFSET = 4;
 	private final int POLY_VERTEX_SIZE = 8;
 
-	private GLMapView mapview;
+	private GLMapView mapView;
 	private GLMapTile[][] tiles;
 	private boolean initialized;
 	private GLMapLoader glMapLoader;
@@ -66,7 +66,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 	private boolean gles_shader = true;
 
 	public GLMapRenderer(GLMapView mapview) {
-		this.mapview = mapview;
+		this.mapView = mapview;
 		this.glMapLoader = new GLMapLoader();
 	}
 
@@ -167,15 +167,13 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 	}
 
 	public void onDrawFrame(GL10 gl) {
+		if (debug)
+			lastDraw = System.currentTimeMillis();
 
-		lastDraw = System.currentTimeMillis();
+		mapRenderFrame();
 
-		if (this.changed) {
-			mapRenderFrame();
-
-			if (debug)
-				Log.i(TAG, "draw took: " + (System.currentTimeMillis() - lastDraw));
-		}
+		if (debug)
+			Log.i(TAG, "draw took: " + (System.currentTimeMillis() - lastDraw));
 	}
 
 	public void onSurfaceChanged(GL10 glUnused, int w, int h) {
@@ -191,9 +189,6 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
 		init();
 	}
-
-	private Boolean lock = new Boolean(true);
-	private boolean changed = true;
 
 	public void move(float x, float y) {
 		this.xPos = this.xPos - x / ((this.zPos / 2) * this.width);
@@ -244,9 +239,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 			}
 		}
 
-		synchronized (this.lock) {
-			this.changed = true;
-		}
+		this.mapView.requestRender();
 
 		return 0;
 	}
@@ -268,7 +261,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 				if (glMapLoader.loadMapTile(name, tile)) {
 					tile.newData = true;
 					tile.loading = false;
-					renderer.changed = true;
+					renderer.mapView.requestRender();
 				}
 				tile.loading = false;
 				return null;
@@ -286,10 +279,6 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		float x = this.xPos;
 		float y = this.yPos;
 		float z = zPos;
-
-		synchronized (this.lock) {
-			this.changed = false;
-		}
 
 		// Check if any new tiles need to be loaded into graphics memory
 		for (int i = 0; i < NROF_TILES_X; i++) {

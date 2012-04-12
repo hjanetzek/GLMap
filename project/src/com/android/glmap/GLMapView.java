@@ -47,7 +47,7 @@ public class GLMapView extends GLSurfaceView {
 		// Set the renderer responsible for frame rendering
 		mRenderer = new GLMapRenderer(this);
 		setRenderer(mRenderer);
-		// setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+		setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
 		// Gesture detection
 		this.gestureDetector = new GestureDetector(new MapGestureDetector(this));
