@@ -349,10 +349,13 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 	}
 
 	private void loadTile(final String name, final GLMapTile tile, final GLMapRenderer renderer) {
+		if (tile.loading)
+			tile.task.cancel(true);
+
 		tile.loading = true;
 		tile.newData = false;
 
-		AsyncTask<Void, Void, Integer> task = new AsyncTask<Void, Void, Integer>() {
+		tile.task = new AsyncTask<Void, Void, Integer>() {
 			@Override
 			protected void onPreExecute() {
 			}
@@ -369,12 +372,10 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 			}
 		};
 
-		tile.task = task;
-
 		try {
-			task.execute();
+			tile.task.execute();
 		} catch (RejectedExecutionException e) {
-			task.cancel(true);
+			tile.task.cancel(true);
 		}
 	}
 
