@@ -20,7 +20,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 	private final float START_X = 980073.56f;
 	private final float START_Y = 6996566.0f;
-	private final int START_Z = 11; // zoom level 
+	private final int START_Z = 11; // zoom level
 	private final int TILE_SIZE = 500;
 
 	private final int NROF_TILES_X = 8;
@@ -60,7 +60,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 	private float xPos = START_X;
 	private float yPos = START_Y;
-	private float zPos = (float)(1.0/Math.pow(2, START_Z));
+	private float zPos = (float) (1.0 / Math.pow(2, START_Z));
 	private int width, height;
 	private double xScrollStart = 0.0;
 	private double yScrollStart = 0.0;
@@ -76,12 +76,12 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 	private void init() {
 		// Set up the program for rendering lines
 		gLineProgram = Utils.createProgram(Shaders.gLineVertexShader,
-		                             Shaders.gLineFragmentShader);
+		                                   Shaders.gLineFragmentShader);
 		if (gLineProgram == 0) {
 			gles_shader = false;
 			Log.e(TAG, "Could not create program.");
 			gLineProgram = Utils.createProgram(Shaders.gLineVertexShaderSimple,
-			                             Shaders.gLineFragmentShaderSimple);
+			                                   Shaders.gLineFragmentShaderSimple);
 			if (gLineProgram == 0) {
 				Log.e(TAG, "Could not create program.");
 				return;
@@ -100,7 +100,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 		// Set up the program for rendering polygons
 		gPolygonProgram = Utils.createProgram(Shaders.gPolygonVertexShader,
-		                                Shaders.gPolygonFragmentShader);
+		                                      Shaders.gPolygonFragmentShader);
 		if (gPolygonProgram == 0) {
 			Log.e(TAG, "Could not create program.");
 			return;
@@ -113,7 +113,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 		// Set up the program for filling polygons
 		gPolygonFillProgram = Utils.createProgram(Shaders.gPolygonFillVertexShader,
-		                                    Shaders.gPolygonFillFragmentShader);
+		                                          Shaders.gPolygonFillFragmentShader);
 		if (gPolygonFillProgram == 0) {
 			Log.e(TAG, "Could not create program.");
 			return;
@@ -347,12 +347,14 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 					                    tiles[i][j].lineVerticesBuffer,
 					                    GLES20.GL_DYNAMIC_DRAW);
 					Utils.checkGlError("glBufferData1 " + +tiles[i][j].nrofLineVertices + " ");
+					tiles[i][j].lineVerticesBuffer = null;
 
 					GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].colorVBO);
 					GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER,
 					                    tiles[i][j].nrofLineVertices * 8,
 					                    tiles[i][j].colorVerticesBuffer,
 					                    GLES20.GL_DYNAMIC_DRAW);
+					tiles[i][j].colorVerticesBuffer = null;
 				}
 				// Upload polygon data to graphics core vertex buffer object
 				if (tiles[i][j].nrofPolygonVertices > 0) {
@@ -362,6 +364,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 					                    tiles[i][j].polygonVerticesBuffer,
 					                    GLES20.GL_DYNAMIC_DRAW);
 					Utils.checkGlError("glBufferData2 " + +tiles[i][j].nrofPolygonVertices + " ");
+					tiles[i][j].polygonVerticesBuffer = null;
 
 				}
 				tiles[i][j].newData = false;

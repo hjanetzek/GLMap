@@ -15,7 +15,6 @@ public class GLMapTile {
 	int polygonVBO;
 
 	int nrofLineVertices;
-	// int nrofPolygonLayers;
 	int nrofPolygonVertices;
 
 	ArrayList<PolygonLayer> polygonLayers;
@@ -23,8 +22,6 @@ public class GLMapTile {
 	ByteBuffer colorVerticesBuffer;
 	ByteBuffer lineVerticesBuffer;
 	ByteBuffer polygonVerticesBuffer;
-	int lineVerticesBufferSize = -1;
-	int polygonVerticesBufferSize = -1;
 
 	boolean newData;
 	boolean loading;

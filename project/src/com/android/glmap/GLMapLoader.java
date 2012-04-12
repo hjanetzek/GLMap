@@ -285,8 +285,6 @@ class GLMapLoader {
 	}
 
 	private int unpackPolygons(GLMapTile tile, int nrofPolygons) {
-		ByteBuffer buf = tile.polygonVerticesBuffer;
-
 		int size;
 		byte[] rgba = new byte[4];
 
@@ -363,8 +361,8 @@ class GLMapLoader {
 
 				if (colorIsEqual(layer.rgba, rgba)) {
 
-					buf.putFloat(originX);
-					buf.putFloat(originY);
+					coords[coordPos++] = originX;
+					coords[coordPos++] = originY;
 					tgtIdx++;
 
 					layer.polygonIndex[p++] = tgtIdx;
@@ -374,13 +372,13 @@ class GLMapLoader {
 					float startY = pointArray[srcIdx + 1];
 
 					for (int j = 0; j < size * 2; j += 2) {
-						buf.putFloat(pointArray[srcIdx + j]);
-						buf.putFloat(pointArray[srcIdx + j + 1]);
+						coords[coordPos++] = pointArray[srcIdx + j];
+						coords[coordPos++] = pointArray[srcIdx + j + 1];
 						tgtIdx++;
 					}
 
-					buf.putFloat(startX);
-					buf.putFloat(startY);
+					coords[coordPos++] = startX;
+					coords[coordPos++] = startY;
 					tgtIdx++;
 				}
 
@@ -469,10 +467,10 @@ class GLMapLoader {
 		int size = nrofLineVertices * 4 * VERTEX_LINE_FLOATS;
 
 		// putting each vertex on its own into ByteBuffer took too long...
-		if (coords.length < nrofLineVertices * VERTEX_LINE_FLOATS) {
+		if (coords.length < nrofLineVertices * VERTEX_LINE_FLOATS)
 			coords = new float[nrofLineVertices * VERTEX_LINE_FLOATS];
+		if (colors.length < nrofLineVertices * VERTEX_COLOR_BYTES)
 			colors = new byte[nrofLineVertices * VERTEX_COLOR_BYTES];
-		}
 
 		coordPos = 0;
 		colorPos = 0;
@@ -493,15 +491,13 @@ class GLMapLoader {
 		tile.nrofLineVertices = unpackLinesToPolygons(nrofLines);
 
 		size = tile.nrofLineVertices * 4 * VERTEX_LINE_FLOATS;
-		if (tile.lineVerticesBufferSize < size) {
-			tile.lineVerticesBufferSize = size;
-			tile.lineVerticesBuffer = ByteBuffer.allocateDirect(size)
-			      .order(ByteOrder.nativeOrder());
 
-			size = nrofLineVertices * VERTEX_COLOR_BYTES;
-			tile.colorVerticesBuffer = ByteBuffer.allocateDirect(size)
-			      .order(ByteOrder.nativeOrder());
-		}
+		tile.lineVerticesBuffer = ByteBuffer.allocateDirect(size)
+		      .order(ByteOrder.nativeOrder());
+
+		size = nrofLineVertices * VERTEX_COLOR_BYTES;
+		tile.colorVerticesBuffer = ByteBuffer.allocateDirect(size)
+		      .order(ByteOrder.nativeOrder());
 
 		tile.lineVerticesBuffer.position(0);
 		tile.colorVerticesBuffer.position(0);
@@ -539,18 +535,14 @@ class GLMapLoader {
 			      + " vertices.");
 
 		// first tile vertex is added to each polygon + 2*the start vertex
-		int nrofPolygonVertices = nrofPolygonPoints; // + 2 * nrofPolygons;
+		int nrofPolygonVertices = nrofPolygonPoints + 2 * nrofPolygons;
 
 		// buffer for drawing polygon vertices
-		size = (nrofPolygonVertices + 2 * nrofPolygons) * POLY_VERTEX_SIZE;
+		size = nrofPolygonVertices * POLY_VERTEX_SIZE;
 
-		if (tile.polygonVerticesBufferSize < size) {
-			tile.polygonVerticesBufferSize = size;
-			tile.polygonVerticesBuffer = ByteBuffer.allocateDirect(size)
-			      .order(ByteOrder.nativeOrder());
-		}
-
-		tile.polygonVerticesBuffer.position(0);
+		if (coords.length < nrofPolygonVertices * 2)
+			coords = new float[nrofPolygonVertices * 2];
+		coordPos = 0;
 
 		// read point data
 		if (pointArray.length < nrofPolygonPoints * 2)
@@ -567,6 +559,13 @@ class GLMapLoader {
 			Log.i(TAG, "Parsing map polygon data.");
 
 		tile.nrofPolygonVertices = unpackPolygons(tile, nrofPolygons);
+
+		tile.polygonVerticesBuffer = ByteBuffer.allocateDirect(size)
+		      .order(ByteOrder.nativeOrder());
+
+		buf = tile.polygonVerticesBuffer.asFloatBuffer();
+		buf.put(coords, 0, tile.nrofPolygonVertices * 2);
+
 		tile.polygonVerticesBuffer.position(0);
 		if (DEBUG)
 			Log.i(TAG, "Finished parsing. " + tile.nrofPolygonVertices);
