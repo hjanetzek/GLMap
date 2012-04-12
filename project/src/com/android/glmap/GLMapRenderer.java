@@ -1,10 +1,5 @@
 package com.android.glmap;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.HttpURLConnection;
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
@@ -13,32 +8,32 @@ import java.util.concurrent.RejectedExecutionException;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-import org.mapsforge.core.Tile;
-
-import android.app.Application;
 import android.opengl.GLES20;
 import android.opengl.GLSurfaceView;
 import android.os.AsyncTask;
 import android.os.CountDownTimer;
 import android.util.Log;
-import android.view.View;
 
 public class GLMapRenderer implements GLSurfaceView.Renderer {
-	private static String TAG = "GLMapRenderer";
-
+	private final String TAG = "GLMapRenderer";
 	private final boolean debug = false;
+
+	private final float START_X = 980073.56f;
+	private final float START_Y = 6996566.0f;
+	private final float START_Z = 0.0008f;
+	private final int TILE_SIZE = 500;
 
 	private final int NROF_TILES_X = 8;
 	private final int NROF_TILES_Y = 8;
 	private final int NROF_TILES = NROF_TILES_X * NROF_TILES_Y;
 
-	private static final int POLYGON_VERTICES_DATA_POS_OFFSET = 0;
-	private static final int LINE_VERTICES_DATA_POS_OFFSET = 0;
-	private static final int LINE_VERTICES_DATA_TEX_OFFSET = 12;
-	private static final int LINE_VERTICES_DATA_COLOR1_OFFSET = 0;
-	private static final int LINE_VERTICES_DATA_COLOR2_OFFSET = 4;
-	private static final int POLY_VERTEX_SIZE = 8;
-	
+	private final int POLYGON_VERTICES_DATA_POS_OFFSET = 0;
+	private final int LINE_VERTICES_DATA_POS_OFFSET = 0;
+	private final int LINE_VERTICES_DATA_TEX_OFFSET = 12;
+	private final int LINE_VERTICES_DATA_COLOR1_OFFSET = 0;
+	private final int LINE_VERTICES_DATA_COLOR2_OFFSET = 4;
+	private final int POLY_VERTEX_SIZE = 8;
+
 	private GLMapView mapview;
 	private GLMapTile[][] tiles;
 	private boolean initialized;
@@ -63,10 +58,9 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 	private int gPolygonFillvPositionHandle;
 	private int gPolygonFillColorHandle;
 
-	private float xPos = 980073.56f;
-	private float yPos = 6996566.0f;
-	private float zPos = 0.0008f;
-	private double tile_size = 500.0;
+	private float xPos = START_X;
+	private float yPos = START_Y;
+	private float zPos = START_Z;
 	private int width, height;
 	private double xScrollStart = 0.0;
 	private double yScrollStart = 0.0;
@@ -215,9 +209,8 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		      .asFloatBuffer().put(coords);
 
 		// Set general settings
-		// GLES20.glEnable(GLES20.GL_BLEND);
 		GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA);
-		//
+
 		GLES20.glEnable(GLES20.GL_DEPTH_TEST);
 		GLES20.glDepthFunc(GLES20.GL_LEQUAL);
 
@@ -251,8 +244,6 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		checkGlError("GLES20.glViewport");
 
 		mapMove(this.xPos, this.yPos, this.zPos, true);
-
-		changed = true;
 	}
 
 	public void onSurfaceCreated(GL10 gl, EGLConfig config) {
@@ -267,10 +258,6 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		this.yPos = this.yPos - y / ((this.zPos / 2) * this.height);
 
 		mapMove(this.xPos, this.yPos, this.zPos, false);
-
-		synchronized (this.lock) {
-			this.changed = true;
-		}
 	}
 
 	public boolean scroll() {
@@ -287,9 +274,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 			this.yPos = y;
 			mapMove(this.xPos, this.yPos, this.zPos, false);
 		}
-		synchronized (this.lock) {
-			this.changed = true;
-		}
+
 		return true;
 	}
 
@@ -318,53 +303,46 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		this.zPos = this.zPos * z;
 
 		mapMove(this.xPos, this.yPos, this.zPos, false);
-
-		synchronized (this.lock) {
-			this.changed = true;
-		}
 	}
 
 	synchronized int mapMove(float x, float y, float z, boolean sync) {
 		if (!this.initialized)
 			return 0;
 
-		int xx = (int) ((x - 0.5 * tile_size * NROF_TILES_X) / tile_size);
-		int yy = (int) ((y - 0.5 * tile_size * NROF_TILES_Y) / tile_size);
-
-		GLMapTile tmp;
+		int xx = (int) ((x - 0.5 * TILE_SIZE * NROF_TILES_X) / TILE_SIZE);
+		int yy = (int) ((y - 0.5 * TILE_SIZE * NROF_TILES_Y) / TILE_SIZE);
 
 		// Check if any new tiles need to be loaded
 		for (int i = 0; i < NROF_TILES_X; i++) {
 			for (int j = 0; j < NROF_TILES_Y; j++) {
-				
-				int tx, ty, s, t;
+				int tx = xx + i;
+				int ty = yy + j;
 
-				tx = xx + i;
-				ty = yy + j;
+				int s = tx % NROF_TILES_X;
+				int t = ty % NROF_TILES_Y;
 
-				s = tx % NROF_TILES_X;
-				t = ty % NROF_TILES_Y;
-				
-				if (tiles[s][t].loading) continue;
-				
-				if ((tiles[s][t].x != tx) || (tiles[s][t].y != ty)) {
+				if (tiles[s][t].loading)
+					continue;
 
-					// Load tile from disk
-					tiles[s][t].x = tx;
-					tiles[s][t].y = ty;
+				if ((tiles[s][t].x == tx) && (tiles[s][t].y == ty))
+					continue;
 
-					String tilename = tx + "_" + ty;
+				tiles[s][t].x = tx;
+				tiles[s][t].y = ty;
 
-					if (sync) {
-						if (glMapLoader.loadMapTile(tilename, tiles[s][t])) {
-							tiles[s][t].newData = true;
-						}
-					} else {
-						// async loading
-						loadTile(tilename, tiles[s][t], this);
-					}
+				String tilename = tx + "_" + ty;
+
+				if (sync) {
+					if (glMapLoader.loadMapTile(tilename, tiles[s][t]))
+						tiles[s][t].newData = true;
+				} else {
+					loadTile(tilename, tiles[s][t], this);
 				}
 			}
+		}
+
+		synchronized (this.lock) {
+			this.changed = true;
 		}
 
 		return 0;
@@ -373,6 +351,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 	private void loadTile(final String name, final GLMapTile tile, final GLMapRenderer renderer) {
 		tile.loading = true;
 		tile.newData = false;
+
 		AsyncTask<Void, Void, Integer> task = new AsyncTask<Void, Void, Integer>() {
 			@Override
 			protected void onPreExecute() {
@@ -385,7 +364,6 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 					tile.loading = false;
 					renderer.changed = true;
 				}
-
 				tile.loading = false;
 				return null;
 			}
@@ -401,7 +379,6 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 	}
 
 	private synchronized void mapRenderFrame() {
-
 		float x = this.xPos;
 		float y = this.yPos;
 		float z = zPos;
@@ -413,39 +390,35 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		// Check if any new tiles need to be loaded into graphics memory
 		for (int i = 0; i < NROF_TILES_X; i++) {
 			for (int j = 0; j < NROF_TILES_Y; j++) {
-				if (tiles[i][j].newData) {
-					synchronized (this) {
-						if (tiles[i][j].nrofLineVertices > 0) {
-							// Upload line data to graphics core vertex buffer object
-							GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].lineVBO);
-							GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER,
-							                    tiles[i][j].nrofLineVertices * 20,
-							                    tiles[i][j].lineVerticesBuffer,
-							                    GLES20.GL_DYNAMIC_DRAW);
-							checkGlError("glBufferData1 " + +tiles[i][j].nrofLineVertices + " ");
+				if (!tiles[i][j].newData)
+					continue;
 
-							GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].colorVBO);
-							GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER,
-							                    tiles[i][j].nrofLineVertices * 8,
-							                    tiles[i][j].colorVerticesBuffer,
-							                    GLES20.GL_DYNAMIC_DRAW);
+				if (tiles[i][j].nrofLineVertices > 0) {
+					// Upload line data to graphics core vertex buffer object
+					GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].lineVBO);
+					GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER,
+					                    tiles[i][j].nrofLineVertices * 20,
+					                    tiles[i][j].lineVerticesBuffer,
+					                    GLES20.GL_DYNAMIC_DRAW);
+					checkGlError("glBufferData1 " + +tiles[i][j].nrofLineVertices + " ");
 
-							checkGlError("glBufferData1 " + +tiles[i][j].nrofLineVertices + " ");
-
-						}
-						// Upload polygon data to graphics core vertex buffer object
-						if (tiles[i][j].nrofPolygonVertices > 0) {
-							GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].polygonVBO);
-							GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER,
-							                    tiles[i][j].nrofPolygonVertices * POLY_VERTEX_SIZE,
-							                    tiles[i][j].polygonVerticesBuffer,
-							                    GLES20.GL_DYNAMIC_DRAW);
-							checkGlError("glBufferData2 " + +tiles[i][j].nrofPolygonVertices + " ");
-
-						}
-						tiles[i][j].newData = false;
-					}
+					GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].colorVBO);
+					GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER,
+					                    tiles[i][j].nrofLineVertices * 8,
+					                    tiles[i][j].colorVerticesBuffer,
+					                    GLES20.GL_DYNAMIC_DRAW);
 				}
+				// Upload polygon data to graphics core vertex buffer object
+				if (tiles[i][j].nrofPolygonVertices > 0) {
+					GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].polygonVBO);
+					GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER,
+					                    tiles[i][j].nrofPolygonVertices * POLY_VERTEX_SIZE,
+					                    tiles[i][j].polygonVerticesBuffer,
+					                    GLES20.GL_DYNAMIC_DRAW);
+					checkGlError("glBufferData2 " + +tiles[i][j].nrofPolygonVertices + " ");
+
+				}
+				tiles[i][j].newData = false;
 			}
 		}
 
@@ -465,7 +438,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 				if (tiles[i][j].polygonLayers == null)
 					continue;
-				
+
 				for (PolygonLayer layer : tiles[i][j].polygonLayers) {
 					boolean found = false;
 					byte color = layer.rgba[0];
@@ -479,14 +452,12 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 			}
 		}
 
+		// Draw polygons into stencil buffer to find covered areas
+		// This uses the method described here:
+		// http://www.glprogramming.com/red/chapter14.html#name13
 		GLES20.glEnable(GLES20.GL_STENCIL_TEST);
 
 		for (int c = 0; c < cnt; c++) {
-
-			// Draw into stencil buffer to find covered areas
-			// This uses the method described here:
-			// http://www.glprogramming.com/red/chapter14.html#name13
-
 			GLES20.glDisable(GLES20.GL_DEPTH_TEST);
 			GLES20.glDisable(GLES20.GL_CULL_FACE);
 			GLES20.glDisable(GLES20.GL_BLEND);
@@ -495,16 +466,10 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 			GLES20.glStencilMask(0x01);
 			GLES20.glStencilOp(GLES20.GL_KEEP, GLES20.GL_KEEP, GLES20.GL_INVERT);
 			GLES20.glStencilFunc(GLES20.GL_ALWAYS, 0, ~0);
-			//
-			// GLES20.glStencilOp(GLES20.GL_INVERT, GLES20.GL_INVERT,
-			// GLES20.GL_INVERT);
-			// GLES20.glStencilFunc(GLES20.GL_NEVER, 0, 1);
-
-			// GLES20.glClearStencil(0);
 
 			GLES20.glColorMask(false, false, false, false);
 			GLES20.glDepthMask(false);
-			
+
 			GLES20.glUseProgram(gPolygonProgram);
 			GLES20.glUniform4f(gPolygoncPositionHandle, x, y, 0.0f, 0.0f);
 			GLES20.glUniform1f(gPolygonScaleXHandle, z * (float) (this.height)
@@ -513,7 +478,6 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 			PolygonLayer drawn = null;
 
-			// draw polygons
 			for (int i = 0; i < NROF_TILES_X; i++) {
 				for (int j = 0; j < NROF_TILES_Y; j++) {
 					if (tiles[i][j].loading || tiles[i][j].newData)
@@ -521,7 +485,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 					if (tiles[i][j].polygonLayers == null)
 						continue;
-					
+
 					PolygonLayer layer = null;
 
 					for (int l = 0, n = tiles[i][j].polygonLayers.size(); l < n; l++) {
@@ -544,12 +508,6 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 					                             false, 0, POLYGON_VERTICES_DATA_POS_OFFSET);
 
 					GLES20.glEnableVertexAttribArray(gPolygonvPositionHandle);
-
-					// for (int k = 0; k < layer.nrofPolygons; k++) {
-					// GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN,
-					// layer.polygonIndex[k * 2],
-					// layer.polygonIndex[k * 2 + 1]);
-					// }
 
 					GLES20.glDrawArrays(GLES20.GL_TRIANGLE_FAN,
 					                    layer.startVertex,
@@ -585,7 +543,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 				GLES20.glEnable(GLES20.GL_DEPTH_TEST);
 				GLES20.glEnable(GLES20.GL_CULL_FACE);
 				GLES20.glEnable(GLES20.GL_BLEND);
-				
+
 				GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4);
 
 				GLES20.glDisableVertexAttribArray(gPolygonFillvPositionHandle);
@@ -621,11 +579,8 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 				GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].colorVBO);
 				GLES20.glEnableVertexAttribArray(gLineColorHandle);
 
-				// GLES20.glEnableVertexAttribArray(gLinevPositionHandle);
-
 				if (gles_shader) {
 					// Draw outlines
-
 					GLES20.glVertexAttribPointer(gLineColorHandle, 4, GLES20.GL_UNSIGNED_BYTE,
 					                             true, 8, LINE_VERTICES_DATA_COLOR2_OFFSET);
 
