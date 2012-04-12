@@ -329,13 +329,14 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		// avoiding stencil buffer clears.
 		for (int i = 0; i < NROF_TILES_X; i++) {
 			for (int j = 0; j < NROF_TILES_Y; j++) {
-				if (tiles[i][j].loading || tiles[i][j].newData)
+				GLMapTile tile = tiles[i][j];
+				if (tile.loading || tile.newData)
 					continue;
 
-				if (tiles[i][j].polygonLayers == null)
+				if (tile.polygonLayers == null)
 					continue;
 
-				for (PolygonLayer layer : tiles[i][j].polygonLayers) {
+				for (PolygonLayer layer : tile.polygonLayers) {
 					boolean found = false;
 					byte color = layer.rgba[0];
 					for (int c = 0; c < cnt; c++)
@@ -376,29 +377,27 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 			for (int i = 0; i < NROF_TILES_X; i++) {
 				for (int j = 0; j < NROF_TILES_Y; j++) {
-					if (tiles[i][j].loading || tiles[i][j].newData)
+					GLMapTile tile = tiles[i][j];
+					if (tile.loading || tile.newData)
 						continue;
 
-					if (tiles[i][j].polygonLayers == null)
+					if (tile.polygonLayers == null)
 						continue;
 
 					PolygonLayer layer = null;
 
-					for (int l = 0, n = tiles[i][j].polygonLayers.size(); l < n; l++) {
-						layer = tiles[i][j].polygonLayers.get(l);
+					for (PolygonLayer l : tile.polygonLayers) {
 
-						if (layer.rgba[0] == colors[c]) {
+						if (l.rgba[0] == colors[c]) {
+							layer = l;
 							break;
 						}
-						layer = null;
 					}
 
 					if (layer == null)
 						continue;
 
-					drawn = layer;
-
-					GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].polygonVBO);
+					GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tile.polygonVBO);
 
 					GLES20.glVertexAttribPointer(gPolygonvPositionHandle, 2, GLES20.GL_FLOAT,
 					                             false, 0, POLYGON_VERTICES_DATA_POS_OFFSET);
@@ -410,6 +409,8 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 					                    layer.nrofVertices);
 
 					GLES20.glDisableVertexAttribArray(gPolygonvPositionHandle);
+
+					drawn = layer;
 				}
 			}
 
@@ -459,10 +460,11 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 		for (int i = 0; i < NROF_TILES_X; i++) {
 			for (int j = 0; j < NROF_TILES_Y; j++) {
-				if (tiles[i][j].loading || tiles[i][j].newData)
+				GLMapTile tile = tiles[i][j];
+				if (tile.loading || tile.newData)
 					continue;
 
-				GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].lineVBO);
+				GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tile.lineVBO);
 				GLES20.glEnableVertexAttribArray(gLinevPositionHandle);
 				GLES20.glEnableVertexAttribArray(gLinetexPositionHandle);
 
@@ -472,7 +474,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 				GLES20.glVertexAttribPointer(gLinetexPositionHandle, 2, GLES20.GL_FLOAT, false,
 				                             20, LINE_VERTICES_DATA_TEX_OFFSET);
 
-				GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].colorVBO);
+				GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tile.colorVBO);
 				GLES20.glEnableVertexAttribArray(gLineColorHandle);
 
 				if (gles_shader) {
@@ -483,7 +485,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 					GLES20.glUniform1f(gLineWidthHandle, 1.0f);
 					GLES20.glUniform1f(gLineHeightOffsetHandle, 0.1f);
 
-					GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, tiles[i][j].nrofLineVertices);
+					GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, tile.nrofLineVertices);
 				}
 
 				// Draw fill
@@ -494,7 +496,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 				GLES20.glUniform1f(gLineHeightOffsetHandle, 1.0f);
 
-				GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, tiles[i][j].nrofLineVertices);
+				GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, tile.nrofLineVertices);
 			}
 		}
 
