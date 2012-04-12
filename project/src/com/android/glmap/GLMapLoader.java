@@ -33,8 +33,7 @@ class GLMapLoader {
 	private float[] pointArray;
 	private float[] coords = new float[1];
 	private byte[] colors = new byte[1];
-	
-	
+
 	private void addVertex(float[] floats, byte[] color) {
 		System.arraycopy(floats, 0, coords, coordPos, 5);
 		coordPos += VERTEX_LINE_FLOATS;
@@ -46,8 +45,8 @@ class GLMapLoader {
 		int i, j, k;
 		int n = 0;
 		int ind = 0;
-	
-		float a, x, y, nextX, nextY, prevX, prevY, ux,uy, vx, vy, wx,wy;
+
+		float a, x, y, nextX, nextY, prevX, prevY, ux, uy, vx, vy, wx, wy;
 		final float[] coord = new float[5];
 		byte[] color = new byte[8];
 
@@ -287,23 +286,21 @@ class GLMapLoader {
 
 	private int unpackPolygons(GLMapTile tile, int nrofPolygons) {
 		ByteBuffer buf = tile.polygonVerticesBuffer;
-		int i, j, k, l;
 
 		int size;
 		byte[] rgba = new byte[4];
 
-		//tile.nrofPolygonLayers = 0;
 		tile.polygonLayers = new ArrayList<PolygonLayer>();
-	
+
 		fileBuffer.position(HEADER_SIZE);
 
 		// Scan through the polygons and set up the needed layers
-		for (i = 0; i < nrofPolygons; i++) {
+		for (int i = 0; i < nrofPolygons; i++) {
 			boolean found = false;
 
 			size = fileBuffer.getInt();
 			fileBuffer.get(rgba);
-			if (size < 3) continue;
+	
 			int thisPolygonVertices = size + 2;
 
 			for (PolygonLayer layer : tile.polygonLayers) {
@@ -321,7 +318,7 @@ class GLMapLoader {
 
 				layer.nrofVertices = thisPolygonVertices;
 				layer.nrofPolygons = 1;
-				for (k = 0; k < 4; k++)
+				for (int k = 0; k < 4; k++)
 					layer.rgba[k] = rgba[k];
 			}
 
@@ -331,13 +328,13 @@ class GLMapLoader {
 		int layers = tile.polygonLayers.size();
 		if (layers == 0)
 			return 0;
-		
+
 		// Set up start indices
 		PolygonLayer layer = tile.polygonLayers.get(0);
 		layer.startVertex = 0;
 		layer.polygonIndex = new int[layer.nrofPolygons * 2];
 
-		for (l = 1; l < layers; l++) {
+		for (int l = 1; l < layers; l++) {
 
 			tile.polygonLayers.get(l).startVertex =
 			   layer.startVertex + layer.nrofVertices;
@@ -353,20 +350,17 @@ class GLMapLoader {
 
 		int tgtIdx = 0;
 
-		for (l = 0; l < layers; l++) {
+		for (int l = 0; l < layers; l++) {
 			layer = tile.polygonLayers.get(l);
 			int srcIdx = 0;
 			int p = 0;
 
 			fileBuffer.position(HEADER_SIZE);
 
-			for (i = 0; i < nrofPolygons; i++) {
+			for (int i = 0; i < nrofPolygons; i++) {
 				size = fileBuffer.getInt();
 				fileBuffer.get(rgba);
-				if (size < 3){ 
-					srcIdx += size * 2;
-					continue;
-				}
+			
 				if (colorIsEqual(layer.rgba, rgba)) {
 
 					buf.putFloat(originX);
@@ -379,7 +373,7 @@ class GLMapLoader {
 					float startX = pointArray[srcIdx];
 					float startY = pointArray[srcIdx + 1];
 
-					for (j = 0; j < size * 2; j += 2) {
+					for (int j = 0; j < size * 2; j += 2) {
 						buf.putFloat(pointArray[srcIdx + j]);
 						buf.putFloat(pointArray[srcIdx + j + 1]);
 						tgtIdx++;
@@ -388,7 +382,6 @@ class GLMapLoader {
 					buf.putFloat(startX);
 					buf.putFloat(startY);
 					tgtIdx++;
-
 				}
 
 				srcIdx += size * 2;
@@ -409,7 +402,7 @@ class GLMapLoader {
 
 		return true;
 	}
-	
+
 	private static RandomAccessFile inputFile;
 	private static FileChannel fileChannel;
 
@@ -475,26 +468,26 @@ class GLMapLoader {
 
 		int size = nrofLineVertices * 4 * VERTEX_LINE_FLOATS;
 
-		// putting each vertex on its own into ByteBuffer took too long... 
-		if (coords.length < nrofLineVertices * VERTEX_LINE_FLOATS){
+		// putting each vertex on its own into ByteBuffer took too long...
+		if (coords.length < nrofLineVertices * VERTEX_LINE_FLOATS) {
 			coords = new float[nrofLineVertices * VERTEX_LINE_FLOATS];
 			colors = new byte[nrofLineVertices * VERTEX_COLOR_BYTES];
 		}
-			
+
 		if (tile.lineVerticesBufferSize < size) {
 			tile.lineVerticesBufferSize = size;
 			tile.lineVerticesBuffer = ByteBuffer.allocateDirect(size)
 			      .order(ByteOrder.nativeOrder());
-			
+
 			size = nrofLineVertices * VERTEX_COLOR_BYTES;
 			tile.colorVerticesBuffer = ByteBuffer.allocateDirect(size)
 			      .order(ByteOrder.nativeOrder());
 		} else {
-			
+
 			if (DEBUG)
 				Log.i(TAG, "dont reallocate line");
 		}
-		
+
 		coordPos = 0;
 		colorPos = 0;
 
@@ -512,18 +505,18 @@ class GLMapLoader {
 		fileBuffer.position(HEADER_SIZE);
 
 		tile.nrofLineVertices = unpackLinesToPolygons(nrofLines);
-		
+
 		tile.lineVerticesBuffer.position(0);
 		tile.colorVerticesBuffer.position(0);
-		
+
 		FloatBuffer buf = tile.lineVerticesBuffer.asFloatBuffer();
 		buf.put(coords, 0, tile.nrofLineVertices * VERTEX_LINE_FLOATS);
-	
+
 		tile.colorVerticesBuffer.put(colors, 0, tile.nrofLineVertices * VERTEX_COLOR_BYTES);
-		
+
 		tile.lineVerticesBuffer.position(0);
 		tile.colorVerticesBuffer.position(0);
-		
+
 		if (DEBUG)
 			Log.i(TAG, "Finished parsing. " + tile.nrofLineVertices);
 

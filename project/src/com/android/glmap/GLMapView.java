@@ -26,8 +26,8 @@ import android.view.animation.AccelerateInterpolator;
 import android.widget.Scroller;
 
 public class GLMapView extends GLSurfaceView {
-	private static String TAG = "GLMapView";
-	private static final boolean DEBUG = true;
+	// private static String TAG = "GLMapView";
+	// private static final boolean DEBUG = true;
 
 	private float cursorZ;
 	private boolean multitouch = false;
@@ -35,19 +35,19 @@ public class GLMapView extends GLSurfaceView {
 	private GestureDetector gestureDetector;
 	public Scroller scroller;
 	public float zoomFactor;
-	
+
 	public GLMapView(Context context) {
 		super(context);
 
-	//	this.setEGLConfigChooser(8, 8, 8, 8, 8, 1);
+		// this.setEGLConfigChooser(8, 8, 8, 8, 8, 1);
 		this.setEGLConfigChooser(new MultisampleConfigChooser());
 
 		this.setEGLContextClientVersion(2);
 
-		/* Set the renderer responsible for frame rendering */
+		// Set the renderer responsible for frame rendering
 		mRenderer = new GLMapRenderer(this);
 		setRenderer(mRenderer);
-		//	setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
+		// setRenderMode(GLSurfaceView.RENDERMODE_WHEN_DIRTY);
 
 		// Gesture detection
 		this.gestureDetector = new GestureDetector(new MapGestureDetector(this));
@@ -66,7 +66,7 @@ public class GLMapView extends GLSurfaceView {
 			this.cursorZ = z;
 		}
 		else if (action == MotionEvent.ACTION_MOVE && this.multitouch
-		   && event.getPointerCount() > 1) {
+		      && event.getPointerCount() > 1) {
 			float dx = event.getX(1) - event.getX(0);
 			float dy = event.getY(1) - event.getY(0);
 			float z = FloatMath.sqrt(dx * dx + dy * dy);
@@ -108,7 +108,7 @@ public class GLMapView extends GLSurfaceView {
 
 		@Override
 		public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
-			
+
 			this.mapview.mRenderer.fling(-velocityX, velocityY);
 			return true;
 		}

@@ -20,7 +20,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 	private final float START_X = 980073.56f;
 	private final float START_Y = 6996566.0f;
-	private final float START_Z = 0.0008f;
+	private final int START_Z = 11; // zoom level 
 	private final int TILE_SIZE = 500;
 
 	private final int NROF_TILES_X = 8;
@@ -60,68 +60,13 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 	private float xPos = START_X;
 	private float yPos = START_Y;
-	private float zPos = START_Z;
+	private float zPos = (float)(1.0/Math.pow(2, START_Z));
 	private int width, height;
 	private double xScrollStart = 0.0;
 	private double yScrollStart = 0.0;
 
 	private long lastDraw = 0;
 	private boolean gles_shader = true;
-
-	private int loadShader(int shaderType, String source) {
-		int shader = GLES20.glCreateShader(shaderType);
-		if (shader != 0) {
-			GLES20.glShaderSource(shader, source);
-			GLES20.glCompileShader(shader);
-			int[] compiled = new int[1];
-			GLES20.glGetShaderiv(shader, GLES20.GL_COMPILE_STATUS, compiled, 0);
-			if (compiled[0] == 0) {
-				Log.e(TAG, "Could not compile shader " + shaderType + ":");
-				Log.e(TAG, GLES20.glGetShaderInfoLog(shader));
-				GLES20.glDeleteShader(shader);
-				shader = 0;
-			}
-		}
-		return shader;
-	}
-
-	private int createProgram(String vertexSource, String fragmentSource) {
-		int vertexShader = loadShader(GLES20.GL_VERTEX_SHADER, vertexSource);
-		if (vertexShader == 0) {
-			return 0;
-		}
-
-		int pixelShader = loadShader(GLES20.GL_FRAGMENT_SHADER, fragmentSource);
-		if (pixelShader == 0) {
-			return 0;
-		}
-
-		int program = GLES20.glCreateProgram();
-		if (program != 0) {
-			GLES20.glAttachShader(program, vertexShader);
-			checkGlError("glAttachShader");
-			GLES20.glAttachShader(program, pixelShader);
-			checkGlError("glAttachShader");
-			GLES20.glLinkProgram(program);
-			int[] linkStatus = new int[1];
-			GLES20.glGetProgramiv(program, GLES20.GL_LINK_STATUS, linkStatus, 0);
-			if (linkStatus[0] == 0) {
-				Log.e(TAG, "Could not link program: ");
-				Log.e(TAG, GLES20.glGetProgramInfoLog(program));
-				GLES20.glDeleteProgram(program);
-				program = 0;
-			}
-		}
-		return program;
-	}
-
-	private void checkGlError(String op) {
-		int error;
-		while ((error = GLES20.glGetError()) != GLES20.GL_NO_ERROR) {
-			Log.e(TAG, op + ": glError " + error);
-			// throw new RuntimeException(op + ": glError " + error);
-		}
-	}
 
 	public GLMapRenderer(GLMapView mapview) {
 		this.mapview = mapview;
@@ -130,12 +75,12 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 
 	private void init() {
 		// Set up the program for rendering lines
-		gLineProgram = createProgram(Shaders.gLineVertexShader,
+		gLineProgram = Utils.createProgram(Shaders.gLineVertexShader,
 		                             Shaders.gLineFragmentShader);
 		if (gLineProgram == 0) {
 			gles_shader = false;
 			Log.e(TAG, "Could not create program.");
-			gLineProgram = createProgram(Shaders.gLineVertexShaderSimple,
+			gLineProgram = Utils.createProgram(Shaders.gLineVertexShaderSimple,
 			                             Shaders.gLineFragmentShaderSimple);
 			if (gLineProgram == 0) {
 				Log.e(TAG, "Could not create program.");
@@ -151,10 +96,10 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		gLinevPositionHandle = GLES20.glGetAttribLocation(gLineProgram, "a_position");
 		gLinetexPositionHandle = GLES20.glGetAttribLocation(gLineProgram, "a_st");
 		gLineColorHandle = GLES20.glGetAttribLocation(gLineProgram, "a_color");
-		checkGlError("glGetAttribLocation");
+		Utils.checkGlError("glGetAttribLocation");
 
 		// Set up the program for rendering polygons
-		gPolygonProgram = createProgram(Shaders.gPolygonVertexShader,
+		gPolygonProgram = Utils.createProgram(Shaders.gPolygonVertexShader,
 		                                Shaders.gPolygonFragmentShader);
 		if (gPolygonProgram == 0) {
 			Log.e(TAG, "Could not create program.");
@@ -164,10 +109,10 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		gPolygonScaleXHandle = GLES20.glGetUniformLocation(gPolygonProgram, "scaleX");
 		gPolygonScaleYHandle = GLES20.glGetUniformLocation(gPolygonProgram, "scaleY");
 		gPolygonvPositionHandle = GLES20.glGetAttribLocation(gPolygonProgram, "a_position");
-		checkGlError("glGetUniformLocation");
+		Utils.checkGlError("glGetUniformLocation");
 
 		// Set up the program for filling polygons
-		gPolygonFillProgram = createProgram(Shaders.gPolygonFillVertexShader,
+		gPolygonFillProgram = Utils.createProgram(Shaders.gPolygonFillVertexShader,
 		                                    Shaders.gPolygonFillFragmentShader);
 		if (gPolygonFillProgram == 0) {
 			Log.e(TAG, "Could not create program.");
@@ -176,7 +121,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		gPolygonFillvPositionHandle = GLES20.glGetAttribLocation(gPolygonFillProgram,
 		                                                         "a_position");
 		gPolygonFillColorHandle = GLES20.glGetUniformLocation(gPolygonFillProgram, "u_color");
-		checkGlError("glGetUniformLocation");
+		Utils.checkGlError("glGetUniformLocation");
 
 		// Set up vertex buffer objects
 		int[] vboIds = new int[3 * NROF_TILES];
@@ -241,7 +186,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 		this.height = h;
 
 		GLES20.glViewport(0, 0, w, h);
-		checkGlError("GLES20.glViewport");
+		Utils.checkGlError("GLES20.glViewport");
 
 		mapMove(this.xPos, this.yPos, this.zPos, true);
 	}
@@ -401,7 +346,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 					                    tiles[i][j].nrofLineVertices * 20,
 					                    tiles[i][j].lineVerticesBuffer,
 					                    GLES20.GL_DYNAMIC_DRAW);
-					checkGlError("glBufferData1 " + +tiles[i][j].nrofLineVertices + " ");
+					Utils.checkGlError("glBufferData1 " + +tiles[i][j].nrofLineVertices + " ");
 
 					GLES20.glBindBuffer(GLES20.GL_ARRAY_BUFFER, tiles[i][j].colorVBO);
 					GLES20.glBufferData(GLES20.GL_ARRAY_BUFFER,
@@ -416,7 +361,7 @@ public class GLMapRenderer implements GLSurfaceView.Renderer {
 					                    tiles[i][j].nrofPolygonVertices * POLY_VERTEX_SIZE,
 					                    tiles[i][j].polygonVerticesBuffer,
 					                    GLES20.GL_DYNAMIC_DRAW);
-					checkGlError("glBufferData2 " + +tiles[i][j].nrofPolygonVertices + " ");
+					Utils.checkGlError("glBufferData2 " + +tiles[i][j].nrofPolygonVertices + " ");
 
 				}
 				tiles[i][j].newData = false;
