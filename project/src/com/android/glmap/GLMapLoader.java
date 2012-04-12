@@ -300,7 +300,7 @@ class GLMapLoader {
 
 			size = fileBuffer.getInt();
 			fileBuffer.get(rgba);
-	
+
 			int thisPolygonVertices = size + 2;
 
 			for (PolygonLayer layer : tile.polygonLayers) {
@@ -360,7 +360,7 @@ class GLMapLoader {
 			for (int i = 0; i < nrofPolygons; i++) {
 				size = fileBuffer.getInt();
 				fileBuffer.get(rgba);
-			
+
 				if (colorIsEqual(layer.rgba, rgba)) {
 
 					buf.putFloat(originX);
@@ -474,20 +474,6 @@ class GLMapLoader {
 			colors = new byte[nrofLineVertices * VERTEX_COLOR_BYTES];
 		}
 
-		if (tile.lineVerticesBufferSize < size) {
-			tile.lineVerticesBufferSize = size;
-			tile.lineVerticesBuffer = ByteBuffer.allocateDirect(size)
-			      .order(ByteOrder.nativeOrder());
-
-			size = nrofLineVertices * VERTEX_COLOR_BYTES;
-			tile.colorVerticesBuffer = ByteBuffer.allocateDirect(size)
-			      .order(ByteOrder.nativeOrder());
-		} else {
-
-			if (DEBUG)
-				Log.i(TAG, "dont reallocate line");
-		}
-
 		coordPos = 0;
 		colorPos = 0;
 
@@ -505,6 +491,17 @@ class GLMapLoader {
 		fileBuffer.position(HEADER_SIZE);
 
 		tile.nrofLineVertices = unpackLinesToPolygons(nrofLines);
+
+		size = tile.nrofLineVertices * 4 * VERTEX_LINE_FLOATS;
+		if (tile.lineVerticesBufferSize < size) {
+			tile.lineVerticesBufferSize = size;
+			tile.lineVerticesBuffer = ByteBuffer.allocateDirect(size)
+			      .order(ByteOrder.nativeOrder());
+
+			size = nrofLineVertices * VERTEX_COLOR_BYTES;
+			tile.colorVerticesBuffer = ByteBuffer.allocateDirect(size)
+			      .order(ByteOrder.nativeOrder());
+		}
 
 		tile.lineVerticesBuffer.position(0);
 		tile.colorVerticesBuffer.position(0);
@@ -551,10 +548,6 @@ class GLMapLoader {
 			tile.polygonVerticesBufferSize = size;
 			tile.polygonVerticesBuffer = ByteBuffer.allocateDirect(size)
 			      .order(ByteOrder.nativeOrder());
-		}
-		else {
-			if (DEBUG)
-				Log.i(TAG, "dont reallocate polygons");
 		}
 
 		tile.polygonVerticesBuffer.position(0);
